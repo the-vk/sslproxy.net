@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 
@@ -42,6 +43,8 @@ namespace sslproxy.net
 
 		private readonly bool _dumpTraffic;
 
+		private AutoResetEvent _closeEvent;
+
 		public ProxyConnectionState InboundConnectionState { get; private set; }
 		public ProxyConnectionState OutboundConnectionState { get; private set; }
 
@@ -55,6 +58,8 @@ namespace sslproxy.net
 
 		public ProxyConnection(TcpClient inboundClient, IPEndPoint outboundEndPoint, ConnectionMode inboundMode, ConnectionMode outboundMode, uint bufferSize, string certificateName, bool dumpTraffic)
 		{
+			_closeEvent = new AutoResetEvent(true);
+
 			_certificate = certificateName;
 
 			_inboundMode = inboundMode;
@@ -85,6 +90,8 @@ namespace sslproxy.net
 				return;
 
 			Log.Info("Closing proxy connection...");
+
+			_closeEvent.WaitOne();
 
 			if (InboundConnectionState != ProxyConnectionState.Closed)
 			{
@@ -185,31 +192,36 @@ namespace sslproxy.net
 						Close();
 						return;
 					}
+					_closeEvent.Reset();
 					Log.DebugFormat("Received {0} bytes from {1} connection from {2}.", read, _inboundMode, inEndpoint);
 
-					if (dump != null)
-					{
-						await dump.WriteAsync(buffer, 0, read);
-						await dump.FlushAsync();
-					}
-
 					Log.DebugFormat("Writing to {0}.", outEndpoint);
-					File.WriteAllBytes(@"C:\work\ssl.log", buffer);
 					await destinationStream.WriteAsync(buffer, 0, read);
 					Log.DebugFormat("Sent {0} bytes to {1} connection to {2}.", read, _outboundMode, outEndpoint);
+
+					_closeEvent.Set();
+
+					if (dump == null) continue;
+					await dump.WriteAsync(buffer, 0, read);
+					await dump.FlushAsync();
 				}
-				catch (IOException)
+				catch (IOException ex)
 				{
+					_closeEvent.Set();
+					Log.Error("IOException.", ex);
 					Close();
 					return;
 				}
-				catch (ObjectDisposedException)
+				catch (ObjectDisposedException ex)
 				{
+					_closeEvent.Set();
+					Log.Error("ObjectDisposedException.", ex);
 					Close();
 					return;
 				}
 				catch (Exception ex)
 				{
+					_closeEvent.Set();
 					Log.Error("Unhandled exception.", ex);
 					Close();
 					return;
