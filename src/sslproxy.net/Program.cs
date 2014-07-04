@@ -34,6 +34,18 @@ namespace sslproxy.net
 			var options = new Options();
 			if (!CommandLine.Parser.Default.ParseArguments(args, options))
 			{
+				var sb = new StringBuilder();
+				sb.AppendLine("Invalid command line:");
+				foreach (var error in options.LastParserState.Errors)
+				{
+					sb.AppendFormat("\t{0}: ",error.BadOption.LongName);
+					var errorList = new List<string>();
+					if (error.ViolatesFormat) errorList.Add("invalid format");
+					if (error.ViolatesMutualExclusiveness) errorList.Add("violates mutual exclusiveness");
+					if (error.ViolatesRequired) errorList.Add("missing required option");
+					sb.AppendLine(String.Join(", ", errorList));
+				}
+				Log.Error(sb);
 				Console.WriteLine(options.GetUsage());
 				return;
 			}
