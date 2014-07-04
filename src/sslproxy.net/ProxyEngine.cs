@@ -76,7 +76,7 @@ namespace sslproxy.net
 
 		private void HandleInboundConnection(TcpClient client)
 		{
-			var proxyConnection = new ProxyConnection(client, _options.OutboundEndPoint, _options.InboundMode, _options.OutboundMode, _options.BufferSize, _options.Certificate, _options.DumpTraffic);
+			var proxyConnection = new ProxyConnection(client, _options.OutboundEndPoint, _options.InboundMode, _options.OutboundMode, _options.BufferSize, _options.Certificate, _options.DumpTraffic, _options.TargetHost);
 			proxyConnection.Closed += proxyConnection_Closed;
 			_connections.Add(proxyConnection);
 		}

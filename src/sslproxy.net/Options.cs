@@ -54,6 +54,9 @@ namespace sslproxy.net
 		[Option('d', "dump-traffic", HelpText = "Dump all trafic to file.", DefaultValue = false)]
 		public bool DumpTraffic { get; set; }
 
+		[Option("outbound-target-host", HelpText = "Remote target host to check against SSL cert if outbound mode is SSL.")]
+		public string TargetHost { get; set; }
+
 		[ParserState]
 		public IParserState LastParserState { get; set; }
 

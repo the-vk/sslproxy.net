@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
@@ -43,6 +39,8 @@ namespace sslproxy.net
 
 		private readonly bool _dumpTraffic;
 
+		private readonly string _targetHost;
+
 		private AutoResetEvent _closeEvent;
 
 		public ProxyConnectionState InboundConnectionState { get; private set; }
@@ -56,7 +54,7 @@ namespace sslproxy.net
 			if (handler != null) handler(sender, e);
 		}
 
-		public ProxyConnection(TcpClient inboundClient, IPEndPoint outboundEndPoint, ConnectionMode inboundMode, ConnectionMode outboundMode, uint bufferSize, string certificateName, bool dumpTraffic)
+		public ProxyConnection(TcpClient inboundClient, IPEndPoint outboundEndPoint, ConnectionMode inboundMode, ConnectionMode outboundMode, uint bufferSize, string certificateName, bool dumpTraffic, string targetHost)
 		{
 			_closeEvent = new AutoResetEvent(true);
 
@@ -69,6 +67,8 @@ namespace sslproxy.net
 			_outboundBuffer = new byte[bufferSize];
 
 			_dumpTraffic = dumpTraffic;
+
+			_targetHost = targetHost;
 
 			_inboundClient = inboundClient;
 			_inboundEndPoint = _inboundClient.Client.RemoteEndPoint;
@@ -125,7 +125,7 @@ namespace sslproxy.net
 				Stream sourceStream;
 				try
 				{
-					sourceStream = await GetStream(_inboundClient.GetStream(), _inboundMode, true);
+					sourceStream = await GetStream(_inboundClient.GetStream(), _inboundMode, true, _targetHost);
 					Log.DebugFormat("Inbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
 				}
 				catch (IOException ex)
@@ -144,7 +144,7 @@ namespace sslproxy.net
 				Stream destinationStream;
 				try
 				{
-					destinationStream = await GetStream(_outboundClient.GetStream(), _outboundMode, false);
+					destinationStream = await GetStream(_outboundClient.GetStream(), _outboundMode, false, _targetHost);
 					Log.DebugFormat("Outbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
 				}
 				catch (IOException ex)
@@ -229,7 +229,7 @@ namespace sslproxy.net
 			}
 		}
 
-		private async Task<Stream> GetStream(Stream sourceStream, ConnectionMode connectionMode, bool isServer)
+		private async Task<Stream> GetStream(Stream sourceStream, ConnectionMode connectionMode, bool isServer, string targetHost)
 		{
 			switch (connectionMode)
 			{
@@ -244,7 +244,7 @@ namespace sslproxy.net
 					}
 					else
 					{
-						throw new NotImplementedException();
+						await sslStream.AuthenticateAsClientAsync(targetHost);
 					}
 					return sslStream;
 			}
