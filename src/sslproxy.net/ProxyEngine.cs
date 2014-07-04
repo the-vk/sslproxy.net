@@ -32,7 +32,27 @@ namespace sslproxy.net
 			ValidateOptions(_options);
 
 			_listener = new TcpListener(_options.InboundEndPoint);
-			_listener.Start();
+			try
+			{
+				_listener.Start();
+			}
+			catch (SocketException ex)
+			{
+				if (ex.NativeErrorCode == (int) SocketError.AccessDenied)
+				{
+					Log.ErrorFormat("Inbound port {0} is used by another application.", _options.InboundEndPoint.Port);
+				}
+				else
+				{
+					Log.Error("Failed to start proxy engine.", ex);
+				}
+				throw;
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to start proxy engine.", ex);
+				throw;
+			}
 			var task = new Task(async () =>
 			{
 				while (true)
