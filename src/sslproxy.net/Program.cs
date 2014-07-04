@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Text;
-using System.Threading.Tasks;
 using log4net;
 using log4net.Config;
 
@@ -13,15 +11,15 @@ namespace sslproxy.net
 {
 	class Program
 	{
-		private static ILog Log = LogManager.GetLogger(typeof (Program));
+		private static readonly ILog Log = LogManager.GetLogger(typeof (Program));
 
 		static public string AssemblyDirectory
 		{
 			get
 			{
-				string codeBase = Assembly.GetExecutingAssembly().CodeBase;
-				UriBuilder uri = new UriBuilder(codeBase);
-				string path = Uri.UnescapeDataString(uri.Path);
+				var codeBase = Assembly.GetExecutingAssembly().CodeBase;
+				var uri = new UriBuilder(codeBase);
+				var path = Uri.UnescapeDataString(uri.Path);
 				return Path.GetDirectoryName(path);
 			}
 		}

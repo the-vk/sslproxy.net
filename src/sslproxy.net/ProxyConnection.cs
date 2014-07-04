@@ -240,6 +240,7 @@ namespace sslproxy.net
 					if (isServer)
 					{
 						var cert = ProxyEngine.FindCertificate(StoreLocation.LocalMachine, StoreName.My, X509FindType.FindBySubjectName, _certificate);
+						Log.DebugFormat("Authenticating as server using certificate: {0}, Thumbprint={1}.", cert.SubjectName.Name, cert.Thumbprint);
 						await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Tls, false);
 					}
 					else
