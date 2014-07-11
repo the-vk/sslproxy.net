@@ -26,6 +26,8 @@ namespace sslproxy.net
 
 		static void Main(string[] args)
 		{
+			AppDomain.CurrentDomain.UnhandledException += ExceptionHandler;
+
 			var configPath = Path.GetFullPath(Path.Combine(AssemblyDirectory, "log4net.config"));
 			XmlConfigurator.ConfigureAndWatch(new FileInfo(configPath));
 
@@ -64,6 +66,11 @@ namespace sslproxy.net
 				var services = new ServiceBase[] {new ProxyEngineService(proxyEngine)};
 				ServiceBase.Run(services);
 			}
+		}
+
+		private static void ExceptionHandler(object sender, UnhandledExceptionEventArgs e)
+		{
+			Log.Fatal("Unhandled exception in domain.", (Exception)e.ExceptionObject);
 		}
 	}
 }
