@@ -41,7 +41,7 @@ namespace sslproxy.net
 
 		private readonly string _targetHost;
 
-		private AutoResetEvent _closeEvent;
+		private readonly AutoResetEvent _closeEvent;
 
 		public ProxyConnectionState InboundConnectionState { get; private set; }
 		public ProxyConnectionState OutboundConnectionState { get; private set; }
@@ -116,59 +116,84 @@ namespace sslproxy.net
 		{
 			var runTask = new Task(async () =>
 			{
-				OutboundConnectionState = ProxyConnectionState.PendingOpen;
-				await _outboundClient.ConnectAsync(outboundEndPoint.Address, outboundEndPoint.Port);
-				OutboundConnectionState = ProxyConnectionState.Open;
+				using (LogicalThreadContext.Stacks["connectionID"].Push(Guid.NewGuid().ToString()))
+				{
+					OutboundConnectionState = ProxyConnectionState.PendingOpen;
+					try
+					{
+						await _outboundClient.ConnectAsync(outboundEndPoint.Address, outboundEndPoint.Port);
+					}
+					catch (Exception ex)
+					{
+						Log.Error(String.Format("Failed to connect to {0}.", outboundEndPoint), ex);
+						Close();
+						return;
+					}
+					OutboundConnectionState = ProxyConnectionState.Open;
 
-				Log.InfoFormat("Open {0} connection to {1}.", _outboundMode, outboundEndPoint);
+					Log.InfoFormat("Open {0} connection to {1}.", _outboundMode, outboundEndPoint);
 
-				Stream sourceStream;
-				try
-				{
-					sourceStream = await GetStream(_inboundClient.GetStream(), _inboundMode, true, _targetHost);
-					Log.DebugFormat("Inbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
-				}
-				catch (IOException ex)
-				{
-					Log.Error(String.Format("Failed to establish inbound connection from {0} to {1}.", _inboundEndPoint, _outboundEndPoint), ex);
-					Close();
-					return;
-				}
-				catch (Exception ex)
-				{
-					Log.Error("Unhandled exception.", ex);
-					Close();
-					return;
-				}
+					Stream sourceStream;
+					try
+					{
+						sourceStream = await GetStream(_inboundClient.GetStream(), _inboundMode, true, _targetHost);
+						Log.DebugFormat("Inbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
+					}
+					catch (IOException ex)
+					{
+						Log.Error(
+							String.Format("Failed to establish inbound connection from {0} to {1} due to commnunication error.",
+								_inboundEndPoint, _outboundEndPoint), ex);
+						Close();
+						return;
+					}
+					catch (ObjectDisposedException ex)
+					{
+						Close();
+						return;
+					}
+					catch (Exception ex)
+					{
+						Log.Error(
+							String.Format("Failed to establish inbound connection from {0} to {1} due to unhandled exception.",
+								_inboundEndPoint, _outboundEndPoint), ex);
+						Close();
+						return;
+					}
 
-				Stream destinationStream;
-				try
-				{
-					destinationStream = await GetStream(_outboundClient.GetStream(), _outboundMode, false, _targetHost);
-					Log.DebugFormat("Outbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
-				}
-				catch (IOException ex)
-				{
-					Log.Error(String.Format("Failed to establish outbound connection from {0} to {1}.", _inboundEndPoint, _outboundEndPoint), ex);
-					Close();
-					return;
-				}
-				catch (Exception ex)
-				{
-					Log.Error("Unhandled exception.", ex);
-					Close();
-					return;
-				}
+					Stream destinationStream;
+					try
+					{
+						destinationStream = await GetStream(_outboundClient.GetStream(), _outboundMode, false, _targetHost);
+						Log.DebugFormat("Outbound connection from {0} to {1} established.", _inboundEndPoint, _outboundEndPoint);
+					}
+					catch (IOException ex)
+					{
+						Log.Error(
+							String.Format("Failed to establish outbound connection from {0} to {1}.", _inboundEndPoint, _outboundEndPoint),
+							ex);
+						Close();
+						return;
+					}
+					catch (Exception ex)
+					{
+						Log.Error("Unhandled exception.", ex);
+						Close();
+						return;
+					}
 
-				var inboundRun = RunConnection(sourceStream, destinationStream, _inboundBuffer, _inboundEndPoint, _outboundEndPoint);
-				var outboundRun = RunConnection(destinationStream, sourceStream, _outboundBuffer, _outboundEndPoint, _inboundEndPoint);
+					var inboundRun = RunConnection(sourceStream, destinationStream, _inboundBuffer, _inboundEndPoint, _outboundEndPoint,
+						_inboundMode, _outboundMode);
+					var outboundRun = RunConnection(destinationStream, sourceStream, _outboundBuffer, _outboundEndPoint,
+						_inboundEndPoint, _outboundMode, _inboundMode);
 
-				Task.WaitAll(inboundRun, outboundRun);
+					Task.WaitAll(inboundRun, outboundRun);
+				}
 			});
 			runTask.Start();
 		}
 
-		private async Task RunConnection(Stream sourceStream, Stream destinationStream, byte[] buffer, EndPoint inEndpoint, EndPoint outEndpoint)
+		private async Task RunConnection(Stream sourceStream, Stream destinationStream, byte[] buffer, EndPoint inEndpoint, EndPoint outEndpoint, ConnectionMode inboundMode, ConnectionMode outboundMode)
 		{
 			Log.DebugFormat("Proxying traffic from {0} to {1}.", inEndpoint, outEndpoint);
 
@@ -193,11 +218,11 @@ namespace sslproxy.net
 						return;
 					}
 					_closeEvent.Reset();
-					Log.DebugFormat("Received {0} bytes from {1} connection from {2}.", read, _inboundMode, inEndpoint);
+					Log.DebugFormat("Received {0} bytes from {1} connection from {2}.", read, inboundMode, inEndpoint);
 
 					Log.DebugFormat("Writing to {0}.", outEndpoint);
 					await destinationStream.WriteAsync(buffer, 0, read);
-					Log.DebugFormat("Sent {0} bytes to {1} connection to {2}.", read, _outboundMode, outEndpoint);
+					Log.DebugFormat("Sent {0} bytes to {1} connection to {2}.", read, outboundMode, outEndpoint);
 
 					_closeEvent.Set();
 
@@ -208,14 +233,16 @@ namespace sslproxy.net
 				catch (IOException ex)
 				{
 					_closeEvent.Set();
-					Log.Error("IOException.", ex);
+					if (!(ex.InnerException is ObjectDisposedException))
+					{
+						Log.Error("IOException.", ex);
+					}
 					Close();
 					return;
 				}
 				catch (ObjectDisposedException ex)
 				{
 					_closeEvent.Set();
-					Log.Error("ObjectDisposedException.", ex);
 					Close();
 					return;
 				}
@@ -242,6 +269,7 @@ namespace sslproxy.net
 						var cert = ProxyEngine.FindCertificate(StoreLocation.LocalMachine, StoreName.My, X509FindType.FindBySubjectName, _certificate);
 						Log.DebugFormat("Authenticating as server using certificate: {0}, Thumbprint={1}.", cert.SubjectName.Name, cert.Thumbprint);
 						await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Tls, false);
+						Log.Debug("Completed authentication as server.");
 					}
 					else
 					{
