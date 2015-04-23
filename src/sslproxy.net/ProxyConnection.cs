@@ -84,12 +84,12 @@ namespace sslproxy.net
 			Run(outboundEndPoint);
 		}
 
-		public void Close()
+		public void Close(string reason)
 		{
 			if (InboundConnectionState == ProxyConnectionState.Closed && OutboundConnectionState == ProxyConnectionState.Closed)
 				return;
 
-			Log.Info("Closing proxy connection...");
+			Log.Info("Closing proxy connection... \n" + reason);
 
 			_closeEvent.WaitOne();
 
@@ -126,7 +126,7 @@ namespace sslproxy.net
 					catch (Exception ex)
 					{
 						Log.Error(String.Format("Failed to connect to {0}.", outboundEndPoint), ex);
-						Close();
+						Close("Exception caught.");
 						return;
 					}
 					OutboundConnectionState = ProxyConnectionState.Open;
@@ -144,12 +144,12 @@ namespace sslproxy.net
 						Log.Error(
 							String.Format("Failed to establish inbound connection from {0} to {1} due to commnunication error.",
 								_inboundEndPoint, _outboundEndPoint), ex);
-						Close();
+                        Close("Inbound connection error.");
 						return;
 					}
 					catch (ObjectDisposedException ex)
 					{
-						Close();
+                        Close("ObjectDisposedException caught.");
 						return;
 					}
 					catch (Exception ex)
@@ -157,7 +157,7 @@ namespace sslproxy.net
 						Log.Error(
 							String.Format("Failed to establish inbound connection from {0} to {1} due to unhandled exception.",
 								_inboundEndPoint, _outboundEndPoint), ex);
-						Close();
+                        Close("Exception caught.");
 						return;
 					}
 
@@ -172,13 +172,13 @@ namespace sslproxy.net
 						Log.Error(
 							String.Format("Failed to establish outbound connection from {0} to {1}.", _inboundEndPoint, _outboundEndPoint),
 							ex);
-						Close();
+						Close("Outbound connection error.");
 						return;
 					}
 					catch (Exception ex)
 					{
 						Log.Error("Unhandled exception.", ex);
-						Close();
+                        Close("Exception caught.");
 						return;
 					}
 
@@ -214,7 +214,7 @@ namespace sslproxy.net
 					var read = await sourceStream.ReadAsync(buffer, 0, buffer.Length);
 					if (read == 0)
 					{
-						Close();
+						Close("Remote side returns 0 bytes.");
 						return;
 					}
 					_closeEvent.Reset();
@@ -237,20 +237,20 @@ namespace sslproxy.net
 					{
 						Log.Error("IOException.", ex);
 					}
-					Close();
+					Close("Exception while proxying. " + ex);
 					return;
 				}
 				catch (ObjectDisposedException ex)
 				{
 					_closeEvent.Set();
-					Close();
+                    Close("ObjectDisposedException caught while proxying.");
 					return;
 				}
 				catch (Exception ex)
 				{
 					_closeEvent.Set();
 					Log.Error("Unhandled exception.", ex);
-					Close();
+					Close("Exception while proxying." + ex);
 					return;
 				}
 			}
