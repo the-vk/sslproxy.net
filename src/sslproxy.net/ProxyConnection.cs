@@ -89,8 +89,8 @@ namespace sslproxy.net
 			if (InboundConnectionState == ProxyConnectionState.Closed && OutboundConnectionState == ProxyConnectionState.Closed)
 				return;
 
-			Log.Info("Closing proxy connection... \n" + reason);
-
+			Log.InfoFormat("Closing proxy connection {0} -> {1}... \n {2}",_inboundEndPoint, _outboundEndPoint, reason);
+            
 			_closeEvent.WaitOne();
 
 			if (InboundConnectionState != ProxyConnectionState.Closed)
@@ -98,18 +98,22 @@ namespace sslproxy.net
 				InboundConnectionState = ProxyConnectionState.PendingClose;
 				_inboundClient.Close();
 				InboundConnectionState = ProxyConnectionState.Closed;
-				Log.InfoFormat("{0} connection from {1} is closed.", _inboundMode, _inboundEndPoint);
+				Log.InfoFormat("Inbound {0} connection from {1} is closed.", _inboundMode, _inboundEndPoint);
 			}
-
+            else
+                Log.InfoFormat("Inbound {0} connection from {1} was already closed before.", _inboundMode, _inboundEndPoint);
 			if (OutboundConnectionState != ProxyConnectionState.Closed)
 			{
 				OutboundConnectionState = ProxyConnectionState.PendingClose;
 				_outboundClient.Close();
 				OutboundConnectionState = ProxyConnectionState.Closed;
-				Log.InfoFormat("{0} connection to {1} is closed.", _outboundMode, _outboundEndPoint);
+				Log.InfoFormat("Outbound {0} connection to {1} is closed.", _outboundMode, _outboundEndPoint);
 
 				OnClosed(this, new EventArgs());
 			}
+            else
+                Log.InfoFormat("Outbound {0} connection from {1} was already closed before.", _outboundMode, _outboundEndPoint);
+
 		}
 
 		private void Run(IPEndPoint outboundEndPoint)
@@ -250,7 +254,7 @@ namespace sslproxy.net
 				{
 					_closeEvent.Set();
 					Log.Error("Unhandled exception.", ex);
-					Close("Exception while proxying." + ex);
+					Close("Exception while proxying.");
 					return;
 				}
 			}

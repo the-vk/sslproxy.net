@@ -81,14 +81,20 @@ namespace test.util
         {
             try
             {
+                List<Task<HttpResponseMessage>> tasks = new List<Task<HttpResponseMessage>>();
                 for (uint i = 0; i < options.RequestsCount; ++i)
                 {
                     HttpClient client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(options.Timeout);
                     client.BaseAddress = new Uri("https://" + options.Endpoint);
                     if (options.KeepAlive)
                         client.DefaultRequestHeaders.Connection.Add("Keep-Alive");
                     Task<HttpResponseMessage> task = client.GetAsync("/Default.aspx");
+                    tasks.Add(task);
                 }
+                HttpResponseMessage response;
+                foreach (Task<HttpResponseMessage> task in tasks)
+                    response = task.Result;
             }
             catch (Exception e)
             {

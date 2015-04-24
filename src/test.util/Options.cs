@@ -22,6 +22,9 @@ namespace test.util
         [Option("keep-alive", DefaultValue = false, HelpText = "Connection: keep-alive value of requests http header.")]
         public bool KeepAlive { get; set; }
 
+        [Option("timeout", DefaultValue = 100, HelpText = "Http clients timeout in seconds.")]
+        public int Timeout { get; set; }
+
         [ParserState]
         public IParserState LastParserState { get; set; }
 
