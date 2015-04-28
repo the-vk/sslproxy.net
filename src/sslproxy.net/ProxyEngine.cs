@@ -106,6 +106,7 @@ namespace sslproxy.net
 		{
 			var proxyConnection = (ProxyConnection)sender;
 			_connections.Remove(proxyConnection);
+            Log.InfoFormat("Number of connections: {0}", _connections.Count);
 		}
 
 		private void ValidateOptions(Options options)

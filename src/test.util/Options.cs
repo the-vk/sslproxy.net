@@ -25,12 +25,20 @@ namespace test.util
         [Option("timeout", DefaultValue = 100, HelpText = "Http clients timeout in seconds.")]
         public int Timeout { get; set; }
 
+        [Option("interval", DefaultValue = 1, HelpText = "Interval between sending each  request of each client in ms.")]
+        public int Interval { get; set; }
+
         [ParserState]
         public IParserState LastParserState { get; set; }
 
         public string GetUsage()
         {
             return HelpText.AutoBuild(this, current => HelpText.DefaultParsingErrorsHandler(this, current));
+        }
+
+        public override string ToString()
+        {
+            return string.Format("\r\n Endpoint: {0} \r\n ClientsCount: {1} , RequestsCount: {2} \r\n KeepAlive: {3} , Timeout: {4} \r\n , Interval: {4} \r\n", Endpoint, ClientsCount, RequestsCount, KeepAlive, Timeout, Interval);
         }
     }
 }

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -18,7 +19,7 @@ namespace test.util
     {
         static Options options;       
         private static readonly ILog Log = LogManager.GetLogger(typeof(Program));
-
+        private static List<ThreadClient> _ThreadsClients;
         static public string AssemblyDirectory
         {
             get
@@ -33,7 +34,7 @@ namespace test.util
         static void Main(string[] args)
         {
             try
-            {
+            {              
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
                 var configPath = Path.GetFullPath(Path.Combine(AssemblyDirectory, "log4net.config"));
                 XmlConfigurator.ConfigureAndWatch(new FileInfo(configPath));
@@ -57,10 +58,13 @@ namespace test.util
                 }
                 ServicePointManager.ServerCertificateValidationCallback +=
                 (sender, cert, chain, sslPolicyErrors) => true;
+                _ThreadsClients = new List<ThreadClient>();
+                Log.Info("Options:" + options.ToString());
                 Log.Info("Start sending requests");
                 SendRequests();
                 Thread.Sleep(Timeout.Infinite);
                 Log.Info("Stop sending requests");
+
             }
             catch(Exception e)
             {
@@ -73,38 +77,56 @@ namespace test.util
         {
             for (uint i = 0; i < options.ClientsCount; ++i)
             {
-                Thread thread = new Thread(ThreadWork);
-                thread.Start();
+                _ThreadsClients.Add(new ThreadClient());
             }            
         }
-        public static void ThreadWork()
-        {
-            try
-            {
-                List<Task<HttpResponseMessage>> tasks = new List<Task<HttpResponseMessage>>();
-                for (uint i = 0; i < options.RequestsCount; ++i)
-                {
-                    HttpClient client = new HttpClient();
-                    client.Timeout = TimeSpan.FromSeconds(options.Timeout);
-                    client.BaseAddress = new Uri("https://" + options.Endpoint);
-                    if (options.KeepAlive)
-                        client.DefaultRequestHeaders.Connection.Add("Keep-Alive");
-                    Task<HttpResponseMessage> task = client.GetAsync("/Default.aspx");
-                    tasks.Add(task);
-                }
-                HttpResponseMessage response;
-                foreach (Task<HttpResponseMessage> task in tasks)
-                    response = task.Result;
-            }
-            catch (Exception e)
-            {
-                Log.Error("Exception while sending request", e);
-            }
-        }
+
+        
 
         static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             Log.Fatal("Unhandled exception in domain.", (Exception)e.ExceptionObject);
+        }
+
+        class ThreadClient
+        {
+            public ThreadClient()
+            {
+                this.thread = new Thread(ThreadWork);
+                this.client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(options.Timeout);
+                client.BaseAddress = new Uri("https://" + options.Endpoint);
+                if (options.KeepAlive)
+                    client.DefaultRequestHeaders.Connection.Add("Keep-Alive");
+                this.thread.Start();               
+            }
+
+            Thread thread;
+            HttpClient client;
+
+            public void ThreadWork()
+            {
+                try
+                {
+                    List<Task<HttpResponseMessage>> tasks = new List<Task<HttpResponseMessage>>();                    
+                    for (uint i = 0; i < options.RequestsCount; ++i)
+                    {                        
+                        Task<HttpResponseMessage> task = client.GetAsync("/Default.aspx");
+                        tasks.Add(task);
+                    }
+                    HttpResponseMessage response;
+                    foreach (Task<HttpResponseMessage> task in tasks)
+                    {
+                        response = task.Result;
+                        Thread.Sleep(options.Interval);
+                    }
+                    this.client.Dispose();                    
+                }
+                catch (Exception e)
+                {
+                    Log.Error("Exception while sending request", e);
+                }
+            }
         }
     }
 }
