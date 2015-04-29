@@ -89,7 +89,7 @@ namespace sslproxy.net
 			foreach (var proxyConnection in _connections)
 			{
 				proxyConnection.Closed -= proxyConnection_Closed;
-				proxyConnection.Close("Proxy engine was stopped");
+				proxyConnection.Close("Proxy engine is stopping");
 			}
 			Log.Info("Proxy engine is stopped.");
 		}
