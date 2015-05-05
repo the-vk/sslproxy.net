@@ -84,7 +84,7 @@ namespace sslproxy.net
 		public void Stop()
 		{
 			Log.Info("Stopping proxy engine...");
-            Log.Info("Number of connections: " + _connections.Count);
+			Log.Info("Number of connections: " + _connections.Count);
 			_listener.Stop();            
 			foreach (var proxyConnection in _connections)
 			{
@@ -99,14 +99,14 @@ namespace sslproxy.net
 			var proxyConnection = new ProxyConnection(client, _options.OutboundEndPoint, _options.InboundMode, _options.OutboundMode, _options.BufferSize, _options.Certificate, _options.DumpTraffic, _options.TargetHost);
 			proxyConnection.Closed += proxyConnection_Closed;
 			_connections.Add(proxyConnection);
-            Log.InfoFormat("Number of connections: {0}", _connections.Count);
+			Log.InfoFormat("Number of connections: {0}", _connections.Count);
 		}
 
 		void proxyConnection_Closed(object sender, EventArgs e)
 		{
 			var proxyConnection = (ProxyConnection)sender;
 			_connections.Remove(proxyConnection);
-            Log.InfoFormat("Number of connections: {0}", _connections.Count);
+			Log.InfoFormat("Number of connections: {0}", _connections.Count);
 		}
 
 		private void ValidateOptions(Options options)

@@ -90,7 +90,7 @@ namespace sslproxy.net
 				return;
 
 			Log.InfoFormat("Closing proxy connection {0} -> {1}... \n {2}",_inboundEndPoint, _outboundEndPoint, reason);
-            
+
 			_closeEvent.WaitOne();
 
 			if (InboundConnectionState != ProxyConnectionState.Closed)
@@ -100,8 +100,8 @@ namespace sslproxy.net
 				InboundConnectionState = ProxyConnectionState.Closed;
 				Log.InfoFormat("Inbound {0} connection from {1} is closed.", _inboundMode, _inboundEndPoint);
 			}
-            else
-                Log.InfoFormat("Inbound {0} connection from {1} was already closed before.", _inboundMode, _inboundEndPoint);
+			else
+				Log.InfoFormat("Inbound {0} connection from {1} was already closed before.", _inboundMode, _inboundEndPoint);
 			if (OutboundConnectionState != ProxyConnectionState.Closed)
 			{
 				OutboundConnectionState = ProxyConnectionState.PendingClose;
@@ -111,8 +111,8 @@ namespace sslproxy.net
 
 				OnClosed(this, new EventArgs());
 			}
-            else
-                Log.InfoFormat("Outbound {0} connection from {1} was already closed before.", _outboundMode, _outboundEndPoint);
+			else
+				Log.InfoFormat("Outbound {0} connection from {1} was already closed before.", _outboundMode, _outboundEndPoint);
 
 		}
 
@@ -148,12 +148,12 @@ namespace sslproxy.net
 						Log.Error(
 							String.Format("Failed to establish inbound connection from {0} to {1} due to commnunication error.",
 								_inboundEndPoint, _outboundEndPoint), ex);
-                        Close("Inbound connection error.");
+						Close("Inbound connection error.");
 						return;
 					}
 					catch (ObjectDisposedException ex)
 					{
-                        Close("ObjectDisposedException caught.");
+						Close("ObjectDisposedException caught.");
 						return;
 					}
 					catch (Exception ex)
@@ -161,7 +161,7 @@ namespace sslproxy.net
 						Log.Error(
 							String.Format("Failed to establish inbound connection from {0} to {1} due to unhandled exception.",
 								_inboundEndPoint, _outboundEndPoint), ex);
-                        Close("Exception caught.");
+						Close("Exception caught.");
 						return;
 					}
 
@@ -182,7 +182,7 @@ namespace sslproxy.net
 					catch (Exception ex)
 					{
 						Log.Error("Unhandled exception.", ex);
-                        Close("Exception caught.");
+						Close("Exception caught.");
 						return;
 					}
 
@@ -247,7 +247,7 @@ namespace sslproxy.net
 				catch (ObjectDisposedException ex)
 				{
 					_closeEvent.Set();
-                    Close("ObjectDisposedException caught while proxying.");
+					Close("ObjectDisposedException caught while proxying.");
 					return;
 				}
 				catch (Exception ex)
