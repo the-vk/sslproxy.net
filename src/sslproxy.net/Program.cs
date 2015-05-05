@@ -55,7 +55,7 @@ namespace sslproxy.net
 			if (options.Console)
 			{
 				Log.Info("Running in console mode.");
-                Log.Info("Options:" + options.ToString());
+				Log.Info("Options:" + options.ToString());
 				proxyEngine.Start();
 				Console.WriteLine("Press enter to exit...");
 				Console.ReadLine();
@@ -64,7 +64,7 @@ namespace sslproxy.net
 			else
 			{
 				Log.Info("Running in service mode.");
-                Log.Info("Options:" + options.ToString());
+				Log.Info("Options:" + options.ToString());
 				var services = new ServiceBase[] {new ProxyEngineService(proxyEngine)};
 				ServiceBase.Run(services);
 			}
