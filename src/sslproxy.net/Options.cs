@@ -65,6 +65,13 @@ namespace sslproxy.net
 			return HelpText.AutoBuild(this, current => HelpText.DefaultParsingErrorsHandler(this, current));
 		}
 
+		public override string ToString()
+		{
+			string result = string.Format("\r\n Console: {0} \r\n InboundMode: {1} , InboundEndPoint: {2} \r\n OutboundMode: {3} , OutboundEndPoint: {4} \r\n", Console, InboundMode, InboundEndPointString, OutboundMode, OutboundEndPointString);
+			result += string.Format(" BufferSize: {0} , Certificate: {1} \r\n DumpTraffic: {2} , TargetHost: {3}", BufferSize, Certificate, DumpTraffic, TargetHost);
+			return result;
+		}
+
 		private static IPEndPoint ParseIPEndpoint(string endPoint)
 		{
 			var ep = endPoint.Split(':');
